@@ -20,7 +20,7 @@ from .myplotspec.FigureManager import FigureManager
 from .myplotspec.manage_defaults_presets import manage_defaults_presets
 from .myplotspec.manage_kwargs import manage_kwargs
 ################################### CLASSES ###################################
-class TimeSeriesFigureManager(FigureManager):
+class WESTFigureManager(FigureManager):
     """
     Manages the generation of time series figures.
 
@@ -323,12 +323,12 @@ class TimeSeriesFigureManager(FigureManager):
     @manage_defaults_presets()
     @manage_kwargs()
     def draw_dataset(self, subplot, label=None, column=None, handles=None,
-        draw_pdist=False, draw_fill_between=False, draw_mean=False,
+        draw_fill_between=False, draw_mean=False,
         draw_plot=True, **kwargs):
         """
         Draws a dataset on a subplot.
 
-        Loaded dataset should have attribute `timeseries_df`
+        Loaded dataset should have attribute `westefficiency_df`
 
         Arguments:
           subplot (Axes): :class:`Axes<matplotlib.axes.Axes>` on
@@ -354,111 +354,41 @@ class TimeSeriesFigureManager(FigureManager):
         # Process arguments
         verbose = kwargs.get("verbose", 1)
         dataset_kw = multi_get_copy("dataset_kw", kwargs, {})
-        if "infile" in kwargs:
-            dataset_kw["infile"] = kwargs["infile"]
+        #if "infile" in kwargs:
+        #    dataset_kw["infile"] = kwargs["infile"]
         dataset = self.load_dataset(verbose=verbose, **dataset_kw)
-        if dataset is not None and hasattr(dataset, "timeseries_df"):
-            timeseries = dataset.timeseries_df
+        if dataset is not None and hasattr(dataset, "westefficiency_df"):
+            westefficiency = dataset.westefficiency_df
         else:
-            timeseries = None
+            westefficiency = None
 
         # Configure plot settings
         plot_kw = multi_get_copy("plot_kw", kwargs, {})
         get_colors(plot_kw, kwargs)
 
-        # Draw fill_between
-        if draw_fill_between:
-            fill_between_kw = multi_get_copy("fill_between_kw", kwargs, {})
-            get_colors(fill_between_kw, plot_kw)
-
-            if "x" in fill_between_kw:
-                fb_x = fill_between_kw.pop("x")
-            else:
-                fb_x = timeseries.index.values
-            if "ylb" in fill_between_kw:
-                fb_ylb = fill_between_kw.pop("ylb")
-            elif "fill_between_lb_key" in fill_between_kw:
-                fill_between_lb_key = fill_between_kw.pop(
-                  "fill_between_lb_key")
-                fb_ylb = timeseries[fill_between_lb_key]
-            elif "fill_between_lb_key" in kwargs:
-                fill_between_lb_key = kwargs.get( "fill_between_lb_key")
-                fb_ylb = timeseries[fill_between_lb_key]
-            else:
-                warn("inappropriate fill_between settings")
-            if "yub" in fill_between_kw:
-                fb_yub = fill_between_kw.pop("yub")
-            elif "fill_between_ub_key" in fill_between_kw:
-                fill_between_ub_key = fill_between_kw.pop(
-                  "fill_between_ub_key")
-                fb_yub = timeseries[fill_between_ub_key]
-            elif "fill_between_ub_key" in kwargs:
-                fill_between_ub_key = kwargs.get( "fill_between_ub_key")
-                fb_yub = timeseries[fill_between_ub_key]
-            else:
-                warn("inappropriate fill_between settings")
-            subplot.fill_between(fb_x, fb_ylb, fb_yub, **fill_between_kw)
+        if "lw" in kwargs:
+            #kwargs['lw'] = 0
+            plot_kw['lw'] = kwargs['lw']
+        if 'hatch' in kwargs:
+            plot_kw['hatch'] = kwargs['hatch']
+        if 'edgecolor' in kwargs:
+            plot_kw['edgecolor'] = str(kwargs['edgecolor'])
 
         # Draw plot
         if draw_plot:
-            if verbose >= 2:
-                print("mean  {0}: {1:6.3f}".format(column,
-                  timeseries[column].mean()))
-                print("stdev {0}: {1:6.3f}".format(column,
-                  timeseries[column].std()))
-            plot = subplot.plot(timeseries.index.values, timeseries[column],
-                     **plot_kw)[0]
-            handle_kw = multi_get_copy("handle_kw", kwargs, {})
-            handle_kw["mfc"] = plot.get_color()
-            handle = subplot.plot([-10, -10], [-10, -10], **handle_kw)[0]
-            if handles is not None and label is not None:
-                handles[label] = handle
-
-        # Draw pdist
-        if draw_pdist:
-
-            if not hasattr(dataset, "pdist_df"):
-                warn("'draw_pdist' is enabled but dataset does not have the "
-                     "necessary attribute 'pdist_df', skipping.")
-            else:
-
-                # Add subplot if not already present
-                if not hasattr(subplot, "_mps_partner_subplot"):
-                    from .myplotspec.axes import add_partner_subplot
-
-                    add_partner_subplot(subplot, **kwargs)
-
-                pdist = dataset.pdist_df[column]
-                pdist_kw = plot_kw.copy()
-                pdist_kw.update(kwargs.get("pdist_kw", {}))
-
-                pd_x = pdist.index.values
-                pd_y = np.squeeze(pdist.values)
-
-                subplot._mps_partner_subplot.plot(pd_y, pd_x, **pdist_kw)
-                pdist_rescale = True
-                if pdist_rescale:
-                    pdist_max = pd_y.max()
-                    x_max = subplot._mps_partner_subplot.get_xbound()[1]
-                    if (pdist_max > x_max / 1.25
-                    or not hasattr(subplot, "_mps_rescaled")):
-                        subplot._mps_partner_subplot.set_xbound(0,
-                        pdist_max*1.25)
-                        xticks = [0, pdist_max*0.25, pdist_max*0.50,
-                          pdist_max*0.75, pdist_max, pdist_max*1.25]
-                        subplot._mps_partner_subplot.set_xticks(xticks)
-                        subplot._mps_rescaled = True
-                    if draw_mean:
-                        mean_kw = plot_kw.copy()
-                        mean_kw.update(kwargs.get("mean_kw", {}))
-                        mean = np.sum(np.array(pd_x, np.float64)
-                                     *np.array(pd_y, np.float64))
-                        subplot._mps_partner_subplot.plot(
-                          pd_y[np.abs(pd_x - mean).argmin()], mean, **mean_kw)
-
-            if draw_fill_between:
-                subplot._mps_partner_subplot.fill_between(fb_x, fb_ylb,
-                  fb_yub, **fill_between_kw)
+            #if verbose >= 2:
+            #    print("mean  {0}: {1:6.3f}".format(column,
+            #      timeseries[column].mean()))
+            #    print("stdev {0}: {1:6.3f}".format(column,
+            #      timeseries[column].std()))
+            plot = subplot.bar(westefficiency, kwargs['index'], width=0.8, align='center', **plot_kw)
+            subplot.set_xlim(kwargs['xbound'])
+            subplot.set_ylim(kwargs['ybound'])
+            #handle_kw = multi_get_copy("handle_kw", kwargs, {})
+            #handle_kw["mfc"] = plot.get_color()
+            #handle = subplot.plot([-10, -10], [-10, -10], **handle_kw)[0]
+            #if handles is not None and label is not None:
+            #    handles[label] = handle
 
 #################################### MAIN #####################################
 if __name__ == "__main__":

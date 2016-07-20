@@ -2184,25 +2184,14 @@ class WESTEfficiencyDataset(Dataset):
         verbose = kwargs.get("verbose", 1)
 
         # Read data
-        self. = self.read(**kwargs)
+        self.westefficiency_df = self.read(**kwargs)
         if verbose >= 2:
             wiprint("Processed WEST and Kinetics:")
-            print(self.sequence_df)
-
-        # Cut data
-        if "use_indexes" in kwargs:
-            use_indexes = np.array(kwargs.pop("use_indexes"))
-            res_index = np.array([int(i.split(":")[1])
-              for i in self.sequence_df.index.values])
-            self.sequence_df = self.sequence_df[np.in1d(res_index,use_indexes)]
-
-        # Calculate probability distribution
-        if calc_pdist:
-            self.pdist_df = self.calc_pdist(df=self.sequence_df, **kwargs)
+            #print(self.sequence_df)
 
         # Write data
         if outfile is not None:
-            self.write(df=self.sequence_df, outfile=outfile, **kwargs)
+            self.write(df=self.westefficiency_df, outfile=outfile, **kwargs)
 
         # Interactive prompt
         if interactive:
