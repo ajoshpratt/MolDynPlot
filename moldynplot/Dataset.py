@@ -2003,6 +2003,327 @@ class H5Dataset(object):
             print("Loaded Dataset {0}[{1}]; Stored at {2}".format(
               path, address, key))
 
+class WESTEfficiencyDataset(Dataset):
+    """
+    Calculates and returns efficiency numbers for up to 4 WEST Datasets.
+    Up to 2 reference simulations, and up to 2 actual simulations.
+    """
+
+    default_hdf5_address = "/"
+    default_hdf5_kw = dict(
+      chunks      = True,
+      compression = "gzip",
+      dtype       = np.float32,
+      scaleoffset = 5)
+
+    @staticmethod
+    def construct_argparser(parser_or_subparsers=None, **kwargs):
+        """
+        Adds arguments to an existing argument parser, constructs a
+        subparser, or constructs a new parser
+
+        Arguments:
+          parser_or_subparsers (ArgumentParser, _SubParsersAction,
+            optional): If ArgumentParser, existing parser to which
+            arguments will be added; if _SubParsersAction, collection of
+            subparsers to which a new argument parser will be added; if
+            None, a new argument parser will be generated
+          kwargs (dict): Additional keyword arguments
+
+        Returns:
+          ArgumentParser: Argument parser or subparser
+        """
+        import argparse
+
+        # Process arguments
+        #help_message = """Process data that is a function of amino acid
+        #  sequence"""
+        if isinstance(parser_or_subparsers, argparse.ArgumentParser):
+            parser = parser_or_subparsers
+        elif isinstance(parser_or_subparsers, argparse._SubParsersAction):
+            parser = parser_or_subparsers.add_parser(
+              name        = "sequence",
+              description = help_message,
+              help        = help_message)
+        elif parser is None:
+            parser = argparse.ArgumentParser(
+              description = help_message)
+
+        # Defaults
+        if parser.get_default("cls") is None:
+            parser.set_defaults(cls=SequenceDataset)
+
+        # Arguments unique to this class
+        arg_groups = {ag.title: ag for ag in parser._action_groups}
+
+        # Input arguments
+        input_group  = arg_groups.get("input",
+          parser.add_argument_group("input"))
+        try:
+            # Most of this is concerned about the files and paths.  Many of the files can stay the same, but the paths must be done.
+            input_group.add_argument(
+              "-rp1",
+              required = True,
+              type     = str,
+              help     = """
+                         """)
+            input_group.add_argument(
+              "-rp2",
+              required = False,
+              type     = str,
+              help     = """
+                         """)
+            input_group.add_argument(
+              "-p1",
+              required = True,
+              type     = str,
+              help     = """
+                         """)
+            input_group.add_argument(
+              "-p2",
+              required = False,
+              type     = str,
+              help     = """
+                         """)
+            input_group.add_argument(
+              "-rw1",
+              required = True,
+              default  = 'west.h5',
+              type     = str,
+              help     = """
+                         """)
+            input_group.add_argument(
+              "-rw2",
+              required = False,
+              default  = 'west.h5',
+              type     = str,
+              help     = """
+                         """)
+            input_group.add_argument(
+              "-w1",
+              required = True,
+              default  = 'west.h5',
+              type     = str,
+              help     = """
+                         """)
+            input_group.add_argument(
+              "-rw2",
+              required = False,
+              default  = 'west.h5',
+              type     = str,
+              help     = """
+                         """)
+            input_group.add_argument(
+              "-rk1",
+              required = True,
+              default  = 'kinavg.h5',
+              type     = str,
+              help     = """
+                         """)
+            input_group.add_argument(
+              "-rk2",
+              required = False,
+              default  = 'kinavg.h5',
+              type     = str,
+              help     = """
+                         """)
+            input_group.add_argument(
+              "-k1",
+              required = True,
+              default  = 'kinavg.h5',
+              type     = str,
+              help     = """
+                         """)
+            input_group.add_argument(
+              "-rk2",
+              required = False,
+              default  = 'kinavg.h5',
+              type     = str,
+              help     = """
+                         """)
+            input_group.add_argument(
+              "-dt",
+              required = False,
+              default  = 1,
+              type     = float,
+              help     = """
+                         """)
+            input_group.add_argument(
+              "-rdt",
+              required = False,
+              default  = 1,
+              type     = float,
+              help     = """
+                         """)
+        except argparse.ArgumentError:
+            pass
+
+        # Arguments inherited from superclass
+        Dataset.construct_argparser(parser)
+
+        return parser
+
+    def __init__(self, calc_pdist=False, outfile=None,
+        interactive=False, **kwargs):
+        """
+        Arguments:
+          infile{s} (list): Path(s) to input file(s); may contain
+            environment variables and wildcards
+          use_indexes (list): Residue indexes to select from DataFrame,
+            once DataFrame has already been loaded
+          calc_pdist (bool): Calculate probability distribution
+            using :meth:`calc_pdist`
+          dataset_cache (dict): Cache of previously-loaded Datasets
+          interactive (bool): Provide iPython prompt and reading and
+            processing data
+          verbose (int): Level of verbose output
+          kwargs (dict): Additional keyword arguments
+        """
+
+        # Process arguments
+        verbose = kwargs.get("verbose", 1)
+
+        # Read data
+        self. = self.read(**kwargs)
+        if verbose >= 2:
+            wiprint("Processed WEST and Kinetics:")
+            print(self.sequence_df)
+
+        # Cut data
+        if "use_indexes" in kwargs:
+            use_indexes = np.array(kwargs.pop("use_indexes"))
+            res_index = np.array([int(i.split(":")[1])
+              for i in self.sequence_df.index.values])
+            self.sequence_df = self.sequence_df[np.in1d(res_index,use_indexes)]
+
+        # Calculate probability distribution
+        if calc_pdist:
+            self.pdist_df = self.calc_pdist(df=self.sequence_df, **kwargs)
+
+        # Write data
+        if outfile is not None:
+            self.write(df=self.sequence_df, outfile=outfile, **kwargs)
+
+        # Interactive prompt
+        if interactive:
+            embed()
+
+    def read(self, **kwargs):
+        """
+        Reads and loads all the different WESTPA files:
+        west.h5, kinavg.h5, etc.  Those are the names by default.
+        Runs the important calculation, then is done.
+        """
+        paths = ['rp1', 'rp2', 'p1', 'p2']
+        kinetics = ['rk1', 'rk2', 'k1', 'k2']
+        west = ['rw1', 'rw2', 'w1', 'w2']
+        conv = [0, 0, 0, 0]
+        convergence_function = self.find_convergence_point_magnitude
+        # Find the convergence points for each simulation type!
+        # We assume that ref1, ref2, simi, simj
+        for i in range(0, 4):
+            try:
+                w = os.path.join(paths[i], west[i])
+                k = os.path.join(paths[i], kinetics[i])
+                kwargs['w{}'.format(i+1)] = h5py.File(w)
+                kwargs['k{}'.format(i+1)] = h5py.File(k)
+                t1 = convergence_function(w, k, kwargs['error'], kwargs['i'], kwargs['j'])
+                t2 = convergence_function(w, k, kwargs['error'], kwargs['j'], kwargs['i'])
+                t = max(t1, t2)
+                if kwargs['simtype'] == 'steadystate':
+                    t = t1
+                kwargs['t{}'.format(i+1)] = t
+            except:
+                conv[i] = float('nan')
+
+        if kwargs['analysis'] == 'efficiency_KD':
+            df = self.calculate_real_KD_efficiencies
+        else:
+            df = 0
+
+        return df
+
+    def calculate_real_KD_efficiencies(self, **kwargs):
+        re1 = k1['rate_evolution'][t1, :, :]
+        re3 = k3['rate_evolution'][t3, :, :]
+        re4 = k4['rate_evolution'][t4, :, :]
+        e1 = ((re1['ci_ubound'] - re1['ci_lbound'])/(2*re1['expected']))
+        e3 = ((re3['ci_ubound'] - re3['ci_lbound'])/(2*re3['expected']))
+        e4 = ((re4['ci_ubound'] - re4['ci_lbound'])/(2*re4['expected']))
+        e = (e3[i, j]**2 + e4[j, ij]**2)
+        e2 = (e1[i, j]**2 + e1[j,i]**2)
+        s1 = w1['summary']['n_particles'][:t1+1].sum()*rdt
+        s3 = w3['summary']['n_particles'][:t3+1].sum()*dt
+        s4 = w4['summary']['n_particles'][:t4+1].sum()*dt
+        if kwargs['simtype'] != 'steadystate':
+            s = max(s3,s4)
+        else:
+            s = s3 + s4
+        e = (s1/s)*(e1/e)
+        return e
+
+    def calculate_real_efficiencies(self, west, kinetics, ref_west, ref_kinetics, t1, t2, state_A, state_B, dt, ref_dt, **kwargs):
+        west_name = west
+        west = h5py.File(west)
+        kinetics = h5py.File(kinetics)
+        ref_west = h5py.File(ref_west)
+        ref_kinetics = h5py.File(ref_kinetics)
+        #if kwargs['simtype'] == 'steadystate':
+        #    re1 = kinetics['target_flux_evolution'][t1, state_B]
+        #else:
+        re1 = kinetics['rate_evolution'][t1, state_A, state_B]
+        re2 = ref_kinetics['rate_evolution'][t2, state_A, state_B]
+        e1 = ((re1['ci_ubound'] - re1['ci_lbound'])/(2*re1['expected']))**2
+        e2 = ((re2['ci_ubound'] - re2['ci_lbound'])/(2*re2['expected']))**2
+        s1 = west['summary']['n_particles'][:t1+1].sum()*dt
+        s2 = ref_west['summary']['n_particles'][:t2+1].sum()*ref_dt
+        e = (s2/s1)*(e2/e1)
+        # Yes!  Sort of.  Aaaaaanyway.
+        #print(west_name,  t1, s1, e)
+        return e
+
+    def find_convergence_point_magnitude(self, west, kinetics, error, i, j, **kwargs):
+        # We're going to need states, as well.
+        west = h5py.File(west)
+        kinetics = h5py.File(kinetics)
+        # Do it vector style!
+        #if kwargs['simtype'] == 'steadystate':
+        #    re = kinetics['target_flux_evolution'][:, j]
+        #else:
+        re = kinetics['rate_evolution'][:, i, j]
+        error_vector = ((re['ci_ubound'] - re['ci_lbound'])/(2*re['expected']))
+        #dmean_vector = np.gradient(re['expected']) / re['expected']
+        dmean_vector = re['expected']
+        # We want to find the point at which the variations have reduced to within an order of magnitude.
+        error_vector[error_vector == float('inf')] = 1.0
+        error_vector[np.isnan(error_vector)] = 1.0
+        #dmean_vector[dmean_vector == float('inf')] = 0.0
+        #dmean_vector[np.isnan(dmean_vector)] = 0.0
+        # Let's do this differently...
+        mask_nan = np.zeros_like(dmean_vector)
+        mask_index = np.where(dmean_vector == float('inf'))
+        mask_nan[mask_index] = 1
+        mask_nan[np.isnan(dmean_vector)] = 1
+        dmean_vector = np.ma.masked_array(dmean_vector, mask=mask_nan)
+        #dmean_vector = np.gradient(dmean_vector) / re['expected'][-2]
+        #dmean_vector = np.abs((dmean_vector - re['expected'][-2])/ re['expected'][-2])
+        dmean_vector = np.abs((dmean_vector/re['expected'][-2]))
+        #for ii,i in enumerate(dmean_vector):
+        for ii in range(0, dmean_vector.shape[0]):
+            if ii > 20:
+                # Check to make sure the variations are small relative to the final value.
+                #if np.var(dmean_vector[:ii]) / dmean_vector[-2] <= .1:
+                #if re['sterr'][ii] / dmean_vector[-2] <= .1:
+                if dmean_vector[ii] <= (1.0+error) and dmean_vector[ii] >= (1.0-error):
+                    if np.average(dmean_vector[ii:]) <= 1.1 and np.average(dmean_vector[ii:]) >= 0.9:
+                    #if error_vector[ii+1] < .2:
+                        west.close()
+                        kinetics.close()
+                        #print(ii)
+                        return ii
+        return dmean_vector.shape[0] - 2
+
+
 #################################### MAIN #####################################
 if __name__ == "__main__":
     import argparse
@@ -2020,6 +2341,7 @@ if __name__ == "__main__":
     RelaxSequenceDataset.construct_argparser(subparsers)
     IREDRelaxDataset.construct_argparser(subparsers)
     IREDTimeSeriesDataset.construct_argparser(subparsers)
+    WESTEfficiencyDataset.construct_argparser(subparsers)
 
     kwargs  = vars(parser.parse_args())
     kwargs.pop("cls")(**kwargs)
