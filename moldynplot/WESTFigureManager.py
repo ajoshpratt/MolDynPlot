@@ -70,6 +70,8 @@ class WESTFigureManager(FigureManager):
             horizontalalignment: left
             verticalalignment: top
         draw_dataset:
+          dataset_kw:
+            cls: moldynplot.Dataset.WESTEfficiencyDataset
           partner_kw:
             position: right
             y2label_kw:
@@ -308,16 +310,32 @@ class WESTFigureManager(FigureManager):
               length: 2
               pad: 6
               width: 1
-      pdist:
-        class: appearance
-        help: Draw probability distribution on right side of plot
-        draw_dataset:
-          draw_pdist: True
-          partner_kw:
-            xlabel:      Distribution
-            xticks:      [0,0.000001]
-            xticklabels: []
-            yticklabels: []
+      presentation_three:
+        draw_figure:
+         ncols:      3
+         fig_width:  10.00
+         left:        1.00
+         sub_width:   2.50
+         wspace:      0.50
+         right:       0.50
+         fig_height:  7.50
+         bottom:      3.00
+         sub_height:  2.50
+         top:         2.00
+         shared_legend: True
+         shared_legend_kw:
+           left:       7.00
+           sub_width:  3.00
+           sub_height: 2.00
+           bottom:     0.00
+           #spines:     True
+           legend_kw:
+             frameon:      False
+             labelspacing: 0.5
+             loc:          lower right
+             #mode:         expand
+             ncol:         3
+             fontsize:     10
     """
 
     @manage_defaults_presets()
@@ -359,6 +377,7 @@ class WESTFigureManager(FigureManager):
         dataset = self.load_dataset(verbose=verbose, **dataset_kw)
         if dataset is not None and hasattr(dataset, "westefficiency_df"):
             westefficiency = dataset.westefficiency_df
+            print(westefficiency)
         else:
             westefficiency = None
 
@@ -381,15 +400,17 @@ class WESTFigureManager(FigureManager):
             #      timeseries[column].mean()))
             #    print("stdev {0}: {1:6.3f}".format(column,
             #      timeseries[column].std()))
-            plot = subplot.bar(westefficiency, kwargs['index'], width=0.8, align='center', **plot_kw)
-            subplot.set_xlim(kwargs['xbound'])
-            subplot.set_ylim(kwargs['ybound'])
-            #handle_kw = multi_get_copy("handle_kw", kwargs, {})
+            print(kwargs['index'], [westefficiency])
+            #plot = subplot.bar(int(kwargs['index']), [westefficiency], width=0.8, align='center', **plot_kw)
+            plot = subplot.bar(int(kwargs['index']), [westefficiency], width=0.8, align='center', **plot_kw)
+            #subplot.set_xlim(kwargs['xbound'])
+            #subplot.set_ylim(kwargs['ybound'])
+            handle_kw = multi_get_copy("handle_kw", kwargs, {})
             #handle_kw["mfc"] = plot.get_color()
-            #handle = subplot.plot([-10, -10], [-10, -10], **handle_kw)[0]
-            #if handles is not None and label is not None:
-            #    handles[label] = handle
+            handle = subplot.plot([-10, -10], [-10, -10], **handle_kw)[0]
+            if handles is not None and label is not None:
+                handles[label] = handle
 
 #################################### MAIN #####################################
 if __name__ == "__main__":
-    TimeSeriesFigureManager().main()
+    WESTFigureManager().main()

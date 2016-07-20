@@ -2036,13 +2036,13 @@ class WESTEfficiencyDataset(Dataset):
         import argparse
 
         # Process arguments
-        #help_message = """Process data that is a function of amino acid
-        #  sequence"""
+        help_message = """Process data that is a function of amino acid
+          sequence"""
         if isinstance(parser_or_subparsers, argparse.ArgumentParser):
             parser = parser_or_subparsers
         elif isinstance(parser_or_subparsers, argparse._SubParsersAction):
             parser = parser_or_subparsers.add_parser(
-              name        = "sequence",
+              name        = "westefficiency",
               description = help_message,
               help        = help_message)
         elif parser is None:
@@ -2051,7 +2051,7 @@ class WESTEfficiencyDataset(Dataset):
 
         # Defaults
         if parser.get_default("cls") is None:
-            parser.set_defaults(cls=SequenceDataset)
+            parser.set_defaults(cls=WESTEfficiencyDataset)
 
         # Arguments unique to this class
         arg_groups = {ag.title: ag for ag in parser._action_groups}
@@ -2059,104 +2059,77 @@ class WESTEfficiencyDataset(Dataset):
         # Input arguments
         input_group  = arg_groups.get("input",
           parser.add_argument_group("input"))
-        try:
+        #try:
             # Most of this is concerned about the files and paths.  Many of the files can stay the same, but the paths must be done.
-            input_group.add_argument(
-              "-rp1",
-              required = True,
-              type     = str,
-              help     = """
-                         """)
-            input_group.add_argument(
-              "-rp2",
-              required = False,
-              type     = str,
-              help     = """
-                         """)
-            input_group.add_argument(
-              "-p1",
-              required = True,
-              type     = str,
-              help     = """
-                         """)
-            input_group.add_argument(
-              "-p2",
-              required = False,
-              type     = str,
-              help     = """
-                         """)
-            input_group.add_argument(
-              "-rw1",
-              required = True,
-              default  = 'west.h5',
-              type     = str,
-              help     = """
-                         """)
-            input_group.add_argument(
-              "-rw2",
-              required = False,
-              default  = 'west.h5',
-              type     = str,
-              help     = """
-                         """)
-            input_group.add_argument(
-              "-w1",
-              required = True,
-              default  = 'west.h5',
-              type     = str,
-              help     = """
-                         """)
-            input_group.add_argument(
-              "-rw2",
-              required = False,
-              default  = 'west.h5',
-              type     = str,
-              help     = """
-                         """)
-            input_group.add_argument(
-              "-rk1",
-              required = True,
-              default  = 'kinavg.h5',
-              type     = str,
-              help     = """
-                         """)
-            input_group.add_argument(
-              "-rk2",
-              required = False,
-              default  = 'kinavg.h5',
-              type     = str,
-              help     = """
-                         """)
-            input_group.add_argument(
-              "-k1",
-              required = True,
-              default  = 'kinavg.h5',
-              type     = str,
-              help     = """
-                         """)
-            input_group.add_argument(
-              "-rk2",
-              required = False,
-              default  = 'kinavg.h5',
-              type     = str,
-              help     = """
-                         """)
-            input_group.add_argument(
-              "-dt",
-              required = False,
-              default  = 1,
-              type     = float,
-              help     = """
-                         """)
-            input_group.add_argument(
-              "-rdt",
-              required = False,
-              default  = 1,
-              type     = float,
-              help     = """
-                         """)
-        except argparse.ArgumentError:
-            pass
+        input_group.add_argument(
+          "-rp1",
+          required = True,
+          type     = str)
+        input_group.add_argument(
+          "-rp2",
+          required = False,
+          type     = str)
+        input_group.add_argument(
+          "-p1",
+          required = True,
+          type     = str)
+        input_group.add_argument(
+          "-p2",
+          required = False,
+          type     = str)
+        input_group.add_argument(
+          "-rw1",
+          required = True,
+          default  = 'west.h5',
+          type     = str)
+        input_group.add_argument(
+          "-rw2",
+          required = False,
+          default  = 'west.h5',
+          type     = str)
+        input_group.add_argument(
+          "-w1",
+          required = True,
+          default  = 'west.h5',
+          type     = str)
+        input_group.add_argument(
+          "-w2",
+          required = False,
+          default  = 'west.h5',
+          type     = str)
+        input_group.add_argument(
+          "-rk1",
+          required = True,
+          default  = 'kinavg.h5',
+          type     = str)
+        input_group.add_argument(
+          "-rk2",
+          required = False,
+          default  = 'kinavg.h5',
+          type     = str)
+        input_group.add_argument(
+          "-k1",
+          required = True,
+          default  = 'kinavg.h5',
+          type     = str)
+        input_group.add_argument(
+          "-k2",
+          required = False,
+          default  = 'kinavg.h5',
+          type     = str)
+        input_group.add_argument(
+          "-dt",
+          required = False,
+          default  = 1,
+          type     = float)
+        input_group.add_argument(
+          "-rdt",
+          required = False,
+          default  = 1,
+          type     = float)
+        #except argparse.ArgumentError:
+        #    print("Blah!  I failed.")
+        #    pass
 
         # Arguments inherited from superclass
         Dataset.construct_argparser(parser)
@@ -2210,14 +2183,15 @@ class WESTEfficiencyDataset(Dataset):
         convergence_function = self.find_convergence_point_magnitude
         # Find the convergence points for each simulation type!
         # We assume that ref1, ref2, simi, simj
+        import os
         for i in range(0, 4):
             try:
-                w = os.path.join(paths[i], west[i])
-                k = os.path.join(paths[i], kinetics[i])
-                kwargs['w{}'.format(i+1)] = h5py.File(w)
-                kwargs['k{}'.format(i+1)] = h5py.File(k)
-                t1 = convergence_function(w, k, kwargs['error'], kwargs['i'], kwargs['j'])
-                t2 = convergence_function(w, k, kwargs['error'], kwargs['j'], kwargs['i'])
+                w = os.path.join(kwargs[paths[i]], kwargs[west[i]])
+                k = os.path.join(kwargs[paths[i]], kwargs[kinetics[i]])
+                kwargs['fw{}'.format(i+1)] = h5py.File(w)
+                kwargs['fk{}'.format(i+1)] = h5py.File(k)
+                t1 = convergence_function(w, k, kwargs['percent_error'], kwargs['i'], kwargs['j'])
+                t2 = convergence_function(w, k, kwargs['percent_error'], kwargs['j'], kwargs['i'])
                 t = max(t1, t2)
                 if kwargs['simtype'] == 'steadystate':
                     t = t1
@@ -2225,25 +2199,41 @@ class WESTEfficiencyDataset(Dataset):
             except:
                 conv[i] = float('nan')
 
+        if kwargs['analysis'] == 'efficiency':
+            df = self.calculate_real_efficiencies(**kwargs)
         if kwargs['analysis'] == 'efficiency_KD':
-            df = self.calculate_real_KD_efficiencies
-        else:
-            df = 0
+            df = self.calculate_real_KD_efficiencies(**kwargs)
 
         return df
 
-    def calculate_real_KD_efficiencies(self, **kwargs):
-        re1 = k1['rate_evolution'][t1, :, :]
-        re3 = k3['rate_evolution'][t3, :, :]
-        re4 = k4['rate_evolution'][t4, :, :]
+    def calculate_real_efficiencies(self, fw1, fw3, fk1, fk3, dt, rdt, t1, t3, i, j, **kwargs):
+        re1 = fk1['rate_evolution'][t1, i, j]
+        re3 = fk3['rate_evolution'][t3, i, j]
+        e1 = ((re1['ci_ubound'] - re1['ci_lbound'])/(2*re1['expected']))**2
+        e3 = ((re3['ci_ubound'] - re3['ci_lbound'])/(2*re3['expected']))**2
+        s1 = fw1['summary']['n_particles'][:t1+1].sum()*rdt
+        s3 = fw3['summary']['n_particles'][:t3+1].sum()*dt
+        e = (s1/s3)*(e1/e3)
+        return e
+
+    def calculate_real_KD_efficiencies(self, fw1, fw3, fw4, fk1, fk3, fk4, dt, rdt, t1, t3, t4, i, j, **kwargs):
+        re1 = fk1['rate_evolution'][t1, :, :]
+        re3 = fk3['rate_evolution'][t3, :, :]
+        re4 = fk4['rate_evolution'][t4, :, :]
         e1 = ((re1['ci_ubound'] - re1['ci_lbound'])/(2*re1['expected']))
         e3 = ((re3['ci_ubound'] - re3['ci_lbound'])/(2*re3['expected']))
         e4 = ((re4['ci_ubound'] - re4['ci_lbound'])/(2*re4['expected']))
-        e = (e3[i, j]**2 + e4[j, ij]**2)
-        e2 = (e1[i, j]**2 + e1[j,i]**2)
-        s1 = w1['summary']['n_particles'][:t1+1].sum()*rdt
-        s3 = w3['summary']['n_particles'][:t3+1].sum()*dt
-        s4 = w4['summary']['n_particles'][:t4+1].sum()*dt
+        e = (e3[i, j]**2 + e4[j, j]**2)
+        e1 = (e1[i, j]**2 + e1[j,i]**2)
+        s1 = fw1['summary']['n_particles'][:t1+1].sum()*rdt
+        s3 = fw3['summary']['n_particles'][:t3+1].sum()*dt
+        s4 = fw4['summary']['n_particles'][:t4+1].sum()*dt
+        #print("Time")
+        #print(s1, s3, s4)
+        #print("Error")
+        #print(e1, e3, e4)
+        #print("Actual error")
+        #print(e, e1)
         if kwargs['simtype'] != 'steadystate':
             s = max(s3,s4)
         else:
@@ -2251,25 +2241,6 @@ class WESTEfficiencyDataset(Dataset):
         e = (s1/s)*(e1/e)
         return e
 
-    def calculate_real_efficiencies(self, west, kinetics, ref_west, ref_kinetics, t1, t2, state_A, state_B, dt, ref_dt, **kwargs):
-        west_name = west
-        west = h5py.File(west)
-        kinetics = h5py.File(kinetics)
-        ref_west = h5py.File(ref_west)
-        ref_kinetics = h5py.File(ref_kinetics)
-        #if kwargs['simtype'] == 'steadystate':
-        #    re1 = kinetics['target_flux_evolution'][t1, state_B]
-        #else:
-        re1 = kinetics['rate_evolution'][t1, state_A, state_B]
-        re2 = ref_kinetics['rate_evolution'][t2, state_A, state_B]
-        e1 = ((re1['ci_ubound'] - re1['ci_lbound'])/(2*re1['expected']))**2
-        e2 = ((re2['ci_ubound'] - re2['ci_lbound'])/(2*re2['expected']))**2
-        s1 = west['summary']['n_particles'][:t1+1].sum()*dt
-        s2 = ref_west['summary']['n_particles'][:t2+1].sum()*ref_dt
-        e = (s2/s1)*(e2/e1)
-        # Yes!  Sort of.  Aaaaaanyway.
-        #print(west_name,  t1, s1, e)
-        return e
 
     def find_convergence_point_magnitude(self, west, kinetics, error, i, j, **kwargs):
         # We're going to need states, as well.
@@ -2312,6 +2283,19 @@ class WESTEfficiencyDataset(Dataset):
                         return ii
         return dmean_vector.shape[0] - 2
 
+    @classmethod
+    def get_cache_key(*args, **kwargs):
+        """
+        Generates key for dataset cache.
+
+        See :class:`SequenceDataset<moldynplot.Dataset.SequenceDataset>`
+        for argument details.
+
+        Returns:
+          tuple: Cache key; contains arguments sufficient to reconstruct
+          dataset
+        """
+        return None
 
 #################################### MAIN #####################################
 if __name__ == "__main__":
